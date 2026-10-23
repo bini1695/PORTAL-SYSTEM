@@ -34,12 +34,16 @@ export class AuthService {
     const rounds = Number(this.config.get<string>('BCRYPT_ROUNDS') ?? 12);
     const passwordHash = await bcrypt.hash(dto.password, rounds);
 
+    // ✅ አንድ ጊዜ ብቻ የሚፈጠር (ከዚህ በፊት ተደግሞ ነበር)
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
         passwordHash,
-        role: Role.STUDENT,
-        accountStatus: AccountStatus.PENDING,
+        role: dto.role ?? Role.STUDENT,
+        // ✅ በ Admin የተፈጠረ ስለሆነ በቀጥታ ACTIVE ይሁን
+        accountStatus: dto.role === Role.ADMIN || dto.role === Role.REGISTRAR 
+          ? AccountStatus.ACTIVE 
+          : AccountStatus.PENDING,
         profile: {
           create: { firstName: dto.firstName, lastName: dto.lastName },
         },
@@ -51,6 +55,30 @@ export class AuthService {
         accountStatus: true,
       },
     });
+
+    // ✅ ሮሉ FACULTY ከሆነ በራስ-ሰር የ Faculty መለያ ፍጠር
+    if (user.role === Role.FACULTY) {
+      await this.prisma.faculty.create({
+        data: {
+          userId: user.id,
+          employeeNo: `EMP-${Date.now()}`,
+          department: 'General',
+        },
+      });
+    }
+
+    // ✅ ሮሉ STUDENT ከሆነ በራስ-ሰር የ Student መለያ ፍጠር
+    if (user.role === Role.STUDENT) {
+      await this.prisma.student.create({
+        data: {
+          userId: user.id,
+          studentNumber: `STU-${Date.now()}`,
+          program: 'Undeclared',
+          degreeLevel: 'BACHELOR',
+          status: AccountStatus.PENDING,
+        },
+      });
+    }
 
     await this.audit.record({
       userId: user.id,
