@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/lib/auth-context';
@@ -10,7 +11,7 @@ import { registerSchema, type RegisterInput } from '@/lib/validations/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, CheckCircle2, User, Shield, Briefcase } from 'lucide-react';
+import { GraduationCap, CheckCircle2, User, Shield, Briefcase, ArrowLeft } from 'lucide-react';
 
 const roles = [
   { id: 'STUDENT', title: 'Student', desc: 'Enroll and manage your studies', icon: GraduationCap },
@@ -32,10 +33,7 @@ export default function RegisterPage() {
     setServerError(null);
     setLoading(true);
     try {
-      // ✅ ተጠቃሚውን መመዝገብ
       await registerUser({ ...data, role: selectedRole });
-      
-      // ✅ ከምዝገባ በኋላ ወደ ሎጊን ገጽ መላክ
       router.push('/login');
     } catch (err) {
       setServerError((err as Error).message);
@@ -46,20 +44,68 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen bg-white">
-      {/* የግራ በኩል ዲዛይን (እንዳለ ይቆይ) */}
-      <div className="hidden lg:flex w-[45%] bg-[#0f2340] relative flex-col justify-between p-12 overflow-hidden">
-        <div className="relative z-10 flex items-center gap-3 text-white">
-          <div className="h-10 w-10 rounded-full bg-[#1a3459] flex items-center justify-center border-2 border-amber-400">
-            <GraduationCap className="h-5 w-5 text-amber-400" />
-          </div>
-          <p className="font-bold text-lg leading-tight">Injibara University</p>
+      
+      {/* ✅ የግራ በኩል ዲዛይን (ምስል + ሎጎ + ጽሑፍ) */}
+      <div className="hidden lg:flex w-[45%] relative flex-col justify-between p-12 overflow-hidden">
+        
+        {/* የጀርባ ምስል (ሙሉ ቦታውን ይሸፍናል) */}
+        <div className="absolute inset-0 z-0">
+          <Image 
+            src="/assets/images/inu-campus.jpg" 
+            alt="Injibara University Campus" 
+            fill 
+            className="object-cover"
+            priority
+          />
+          {/* ቀላል የጨለማ ንብርብር (30% ብቻ) - ጽሑፎቹ እንዲነበቡ */}
+          <div className="absolute inset-0 bg-black/40"></div>
         </div>
-        <div className="relative z-10 text-sm text-slate-400">Registration & Enrollment System</div>
+
+        {/* የላይኛው ክፍል (ሎጎ + ወደ መነሻ ሊንክ) */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-white">
+            <div className="h-10 w-10 rounded-md overflow-hidden bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+              <Image 
+                src="/assets/icons/logo.jpg" 
+                alt="Injibara University Logo" 
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <p className="font-bold text-lg leading-tight drop-shadow-md">Injibara University</p>
+          </div>
+          
+          <Link href="/" className="text-white hover:text-slate-200 transition-colors flex items-center gap-1 text-sm font-medium drop-shadow-md">
+            <ArrowLeft className="h-4 w-4" /> Home
+          </Link>
+        </div>
+
+        {/* የመሃል ክፍል (ጽሑፍ በምስሉ ላይ) */}
+        <div className="relative z-10 max-w-md my-auto">
+          <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">Your journey begins here.</h2>
+          <p className="text-slate-100 text-base leading-relaxed drop-shadow-md">
+            Create your account to start managing your registration, courses, and academic progress.
+          </p>
+        </div>
+
+        {/* የታችኛው ክፍል */}
+        <div className="relative z-10 text-sm text-slate-200 drop-shadow-md">
+          Registration & Enrollment System
+        </div>
       </div>
 
       {/* የቀኝ በኩል ፎርም */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-16 bg-slate-50">
-        <div className="w-full max-w-lg space-y-6">
+      <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-16 bg-slate-50 relative overflow-y-auto">
+        
+        {/* ለስልክ እይታ ወደ መነሻ መመለሻ */}
+        <div className="absolute top-8 right-8 lg:hidden">
+          <Link href="/" className="text-slate-500 hover:text-[#0f2340] transition-colors flex items-center gap-1 text-sm font-medium">
+            <ArrowLeft className="h-4 w-4" /> Back to Home
+          </Link>
+        </div>
+
+        <div className="w-full max-w-lg space-y-6 my-auto py-8">
           <div>
             <h2 className="text-3xl font-bold text-[#0f2340] mb-2">Create your account</h2>
             <p className="text-slate-500 text-sm">Choose your role, then complete your details.</p>
@@ -144,6 +190,12 @@ export default function RegisterPage() {
               Log in
             </Link>
           </p>
+
+          <div className="text-center">
+            <Link href="/" className="text-xs text-slate-400 hover:text-slate-600 hover:underline">
+              Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     </div>
