@@ -34,12 +34,13 @@ export class AuthService {
     const rounds = Number(this.config.get<string>('BCRYPT_ROUNDS') ?? 12);
     const passwordHash = await bcrypt.hash(dto.password, rounds);
 
+    // ✅ ሮሉን ከ Frontend ተቀብሎ መፍጠር
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
         passwordHash,
-        role: Role.STUDENT,
-        accountStatus: AccountStatus.PENDING,
+        role: dto.role ?? Role.STUDENT,
+        accountStatus: AccountStatus.ACTIVE,
         profile: {
           create: { firstName: dto.firstName, lastName: dto.lastName },
         },
@@ -51,6 +52,30 @@ export class AuthService {
         accountStatus: true,
       },
     });
+
+    // ✅ ሮሉ STUDENT ከሆነ የ Student መለያ ፍጠር
+    if (user.role === Role.STUDENT) {
+      await this.prisma.student.create({
+        data: {
+          userId: user.id,
+          studentNumber: `STU-${Date.now()}`,
+          program: 'Undeclared',
+          degreeLevel: 'BACHELOR',
+          status: AccountStatus.ACTIVE,
+        },
+      });
+    }
+
+    // ✅ ሮሉ FACULTY ከሆነ የ Faculty መለያ ፍጠር
+    if (user.role === Role.FACULTY) {
+      await this.prisma.faculty.create({
+        data: {
+          userId: user.id,
+          employeeNo: `EMP-${Date.now()}`,
+          department: 'General',
+        },
+      });
+    }
 
     await this.audit.record({
       userId: user.id,

@@ -1,13 +1,5 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { InvoiceStatus, Role } from '@prisma/client';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -22,19 +14,16 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 export class BillingController {
   constructor(private readonly billing: BillingService) {}
 
-  @Get('invoices/me')
-  @Roles(Role.STUDENT)
-  myInvoices(@CurrentUser() user: AuthenticatedUser) {
-    return this.billing.listMyInvoices(user.sub);
+  @Get('stats')
+  @Roles(Role.BURSAR, Role.ADMIN)
+  getDashboardStats() {
+    return this.billing.getDashboardStats();
   }
 
   @Get('invoices')
   @Roles(Role.BURSAR, Role.ADMIN)
-  listInvoices(
-    @Query('studentId') studentId?: string,
-    @Query('status') status?: InvoiceStatus,
-  ) {
-    return this.billing.listAll({ studentId, status });
+  getAllInvoices() {
+    return this.billing.getAllInvoices();
   }
 
   @Post('invoices')
@@ -46,21 +35,19 @@ export class BillingController {
     return this.billing.createInvoice(user.sub, dto);
   }
 
-  @Post('invoices/:id/reconcile')
-  @Roles(Role.BURSAR, Role.ADMIN)
-  reconcile(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.billing.reconcileInvoice(user.sub, id);
-  }
-
   @Post('payments')
-  @Roles(Role.BURSAR, Role.ADMIN, Role.STUDENT)
+  @Roles(Role.BURSAR, Role.ADMIN)
   recordPayment(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePaymentDto,
   ) {
     return this.billing.recordPayment(user.sub, dto);
+  }
+
+  // ✅ የተከፈሉ ክፍያዎችን ለማምጣት
+  @Get('payments')
+  @Roles(Role.BURSAR, Role.ADMIN)
+  getAllPayments() {
+    return this.billing.getAllPayments();
   }
 }

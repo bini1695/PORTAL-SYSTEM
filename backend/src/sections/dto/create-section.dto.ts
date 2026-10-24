@@ -1,20 +1,7 @@
 import { Type } from 'class-transformer';
-import {
-  ArrayMinSize,
-  IsArray,
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-  ValidateNested,
-} from 'class-validator';
+import { ArrayMinSize, IsArray, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { Term } from '@prisma/client';
-import { ScheduleSlotDto } from './schedule-slot.dto';
+import { ScheduleSlotDto } from './schedule-slot.dto'; // ✅ ትክክለኛው መንገድ
 
 export class CreateSectionDto {
   @IsUUID()
@@ -27,23 +14,18 @@ export class CreateSectionDto {
   @IsEnum(Term)
   term!: Term;
 
-  @Matches(/^\d{4}-\d{4}$/, {
-    message: 'academicYear must be YYYY-YYYY',
-  })
+  @IsString()
   academicYear!: string;
 
   @IsString()
-  @MaxLength(8)
   sectionCode!: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(40)
   room?: string;
 
   @IsInt()
   @Min(1)
-  @Max(500)
   capacity!: number;
 
   @IsArray()
