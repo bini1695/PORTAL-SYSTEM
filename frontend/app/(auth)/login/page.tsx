@@ -10,7 +10,7 @@ import { loginSchema, type LoginInput } from '@/lib/validations/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, ArrowLeft } from 'lucide-react'; // ✅ ArrowLeft ተጨምሯል
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,12 +26,9 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       
-      // ✅ ተጠቃሚውን ከ localStorage ማንበብ
       const storedUser = localStorage.getItem('sres_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        
-        // ✅ በሮሉ መሰረት መላክ
         switch (parsed.role) {
           case 'ADMIN': router.push('/admin'); break;
           case 'BURSAR': router.push('/bursar'); break;
@@ -50,19 +47,34 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-white">
-      {/* የግራ በኩል ዲዛይን (እንዳለ ይቆይ) */}
+      {/* የግራ በኩል ዲዛይን */}
       <div className="hidden lg:flex w-[45%] bg-[#0f2340] relative flex-col justify-between p-12 overflow-hidden">
-        <div className="relative z-10 flex items-center gap-3 text-white">
-          <div className="h-10 w-10 rounded-full bg-[#1a3459] flex items-center justify-center border-2 border-amber-400">
-            <GraduationCap className="h-5 w-5 text-amber-400" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-white">
+            <div className="h-10 w-10 rounded-full bg-[#1a3459] flex items-center justify-center border-2 border-amber-400">
+              <GraduationCap className="h-5 w-5 text-amber-400" />
+            </div>
+            <p className="font-bold text-lg leading-tight">Injibara University</p>
           </div>
-          <p className="font-bold text-lg leading-tight">Injibara University</p>
+          
+          {/* ✅ ወደ መነሻ ገጽ መመለሻ ሊንክ (በግራ በኩል) */}
+          <Link href="/" className="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-sm">
+            <ArrowLeft className="h-4 w-4" /> Home
+          </Link>
         </div>
         <div className="relative z-10 text-sm text-slate-400">Registration & Enrollment System</div>
       </div>
 
       {/* የቀኝ በኩል ዲዛይን */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-16 bg-slate-50">
+      <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-16 bg-slate-50 relative">
+        
+        {/* ✅ ወደ መነሻ ገጽ መመለሻ ሊንክ (በቀኝ በኩል ከላይ) */}
+        <div className="absolute top-8 right-8 lg:hidden">
+          <Link href="/" className="text-slate-500 hover:text-[#0f2340] transition-colors flex items-center gap-1 text-sm font-medium">
+            <ArrowLeft className="h-4 w-4" /> Back to Home
+          </Link>
+        </div>
+
         <div className="w-full max-w-md space-y-8">
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-bold text-[#0f2340] mb-2">Welcome back</h2>
@@ -107,6 +119,13 @@ export default function LoginPage() {
               Create an account
             </Link>
           </p>
+
+          {/* ✅ ወደ መነሻ ገጽ መመለሻ ሊንክ (ከታች) */}
+          <div className="text-center">
+            <Link href="/" className="text-xs text-slate-400 hover:text-slate-600 hover:underline">
+              Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     </div>
