@@ -12,6 +12,8 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { BillingModule } from './billing/billing.module';
 import { HoldsModule } from './holds/holds.module';
 import { AuditModule } from './audit/audit.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
+import { FacultyModule } from './faculty/faculty.module'; // ✅ ትክክለኛው የፎልደር መንገድ
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { AuditModule } from './audit/audit.module';
     EnrollmentsModule,
     BillingModule,
     HoldsModule,
+    AnnouncementsModule,
+    FacultyModule, // ✅ ይህ መካተቱን አረጋግጥ
   ],
 })
 export class AppModule {}
