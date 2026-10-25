@@ -13,7 +13,8 @@ import { BillingModule } from './billing/billing.module';
 import { HoldsModule } from './holds/holds.module';
 import { AuditModule } from './audit/audit.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
-import { FacultyModule } from './faculty/faculty.module'; // ✅ ትክክለኛው የፎልደር መንገድ
+import { FacultyModule } from './faculty/faculty.module';
+import { SettingsModule } from './settings/settings.module'; // 👈 አዲስ የተጨመረ
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { FacultyModule } from './faculty/faculty.module'; // ✅ ትክክለኛ
     BillingModule,
     HoldsModule,
     AnnouncementsModule,
-    FacultyModule, // ✅ ይህ መካተቱን አረጋግጥ
+    FacultyModule,
+    SettingsModule, // 👈 እዚህ ጋር ተካቷል
   ],
 })
 export class AppModule {}
