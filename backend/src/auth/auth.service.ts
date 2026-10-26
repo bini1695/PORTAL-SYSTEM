@@ -34,13 +34,13 @@ export class AuthService {
     const rounds = Number(this.config.get<string>('BCRYPT_ROUNDS') ?? 12);
     const passwordHash = await bcrypt.hash(dto.password, rounds);
 
-    // ✅ ሮሉን ከ Frontend ተቀብሎ መፍጠር
+    // 👇 ሁሉም ሰው ሲመዘገብ PENDING ይሁን (ማጽደቅ ይፈልጋል)
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
         passwordHash,
         role: dto.role ?? Role.STUDENT,
-        accountStatus: AccountStatus.ACTIVE,
+        accountStatus: AccountStatus.PENDING, 
         profile: {
           create: { firstName: dto.firstName, lastName: dto.lastName },
         },
@@ -53,7 +53,6 @@ export class AuthService {
       },
     });
 
-    // ✅ ሮሉ STUDENT ከሆነ የ Student መለያ ፍጠር
     if (user.role === Role.STUDENT) {
       await this.prisma.student.create({
         data: {
@@ -61,12 +60,11 @@ export class AuthService {
           studentNumber: `STU-${Date.now()}`,
           program: 'Undeclared',
           degreeLevel: 'BACHELOR',
-          status: AccountStatus.ACTIVE,
+          status: AccountStatus.PENDING, 
         },
       });
     }
 
-    // ✅ ሮሉ FACULTY ከሆነ የ Faculty መለያ ፍጠር
     if (user.role === Role.FACULTY) {
       await this.prisma.faculty.create({
         data: {
@@ -103,6 +101,11 @@ export class AuthService {
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
+    // 👇 ሁሉም PENDING የሆኑ ሰዎች እንዳይገቡ ማገድ
+    if (user.accountStatus === AccountStatus.PENDING) {
+      throw new ForbiddenException('Your account is pending admin approval.');
+    }
+
     if (user.accountStatus === AccountStatus.SUSPENDED) {
       throw new ForbiddenException('Account is suspended');
     }
@@ -136,8 +139,9 @@ export class AuthService {
       where: { id: payload.sub },
       select: { id: true, email: true, role: true, accountStatus: true },
     });
-    if (!user || user.accountStatus === AccountStatus.SUSPENDED) {
-      throw new UnauthorizedException('User no longer valid');
+
+    if (!user || user.accountStatus === AccountStatus.SUSPENDED || user.accountStatus === AccountStatus.PENDING) {
+      throw new UnauthorizedException('User no longer valid or pending approval');
     }
     return this.issueTokens(user);
   }
