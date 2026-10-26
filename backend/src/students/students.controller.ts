@@ -12,21 +12,29 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 export class StudentsController {
   constructor(private readonly students: StudentsService) {}
 
-  // ✅ የመገለጫ ማምጫ (ለተማሪ)
   @Get('me')
-  @Roles(Role.STUDENT)
+  // 👇 SUPER_ADMIN እና ADMIN ን ጨምረናል (ስህተት እንዳይሰጥ)
+  @Roles(Role.STUDENT, Role.SUPER_ADMIN, Role.ADMIN) 
   getMyProfile(@CurrentUser() user: AuthenticatedUser) {
+    // SUPER_ADMIN ወይም ADMIN ከሆነ የተማሪ መረጃ ስለሌላቸው ባዶ እንመልስ
+    if (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN) {
+      return { message: 'Admin profile access - use admin dashboard' };
+    }
     return this.students.getMyProfile(user.sub);
   }
 
-  // ✅ የመገለጫ ማሻሻያ (ለተማሪ)
+  @Get('me/grades')
+  @Roles(Role.STUDENT)
+  getMyGrades(@CurrentUser() user: AuthenticatedUser) {
+    return this.students.getMyGrades(user.sub);
+  }
+
   @Patch('me')
   @Roles(Role.STUDENT)
   updateProfile(@CurrentUser() user: AuthenticatedUser, @Body() body: any) {
     return this.students.updateProfile(user.sub, body);
   }
 
-  // ✅ ሰነድ መጫን (ለተማሪ)
   @Post('me/documents')
   @Roles(Role.STUDENT)
   uploadDocument(
@@ -37,16 +45,14 @@ export class StudentsController {
     return this.students.uploadDocument(user.sub, type, url);
   }
 
-  // ✅ የተማሪዎች ዝርዝር (ለ Admin, Registrar, Bursar)
   @Get()
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.BURSAR)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.REGISTRAR, Role.BURSAR) 
   listAll() {
     return this.students.listAll();
   }
 
-  // ✅ የተማሪ ስታተስ መቀየር (ለ Admin, Registrar)
   @Patch(':id/status')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.REGISTRAR) 
   updateStatus(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
