@@ -57,7 +57,10 @@ export class CoursesService {
     if (exists) throw new ConflictException('Course code already exists');
 
     const course = await this.prisma.course.create({
-      data: { ...dto, code: dto.code.toUpperCase() },
+      data: { 
+        ...dto, 
+        code: dto.code.toUpperCase(),
+      },
     });
     await this.audit.record({
       userId: actorId,
@@ -84,6 +87,18 @@ export class CoursesService {
       entityId: id,
     });
     return updated;
+  }
+
+  async remove(actorId: string, id: string) {
+    await this.ensureCourse(id);
+    await this.prisma.course.delete({ where: { id } });
+    await this.audit.record({
+      userId: actorId,
+      action: 'COURSE_DELETED',
+      entity: 'Course',
+      entityId: id,
+    });
+    return { success: true };
   }
 
   async addPrerequisite(
