@@ -2,169 +2,187 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, ChevronRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-const GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'F'];
-
-export default function FacultyGradebookPage() {
+export default function GradebookPage() {
   const [sections, setSections] = useState<any[]>([]);
   const [selectedSection, setSelectedSection] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [roster, setRoster] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRosterLoading, setIsRosterLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [grades, setGrades] = useState<Record<string, string>>({});
 
-  // 1. የመምህሩን ኮርሶች ከዳታቤዝ ማምጣት
   useEffect(() => {
-    api.getFacultySections()
-      .then(data => {
-        setSections(data.sections || []);
-        if (data.sections && data.sections.length > 0) {
-          setSelectedSection(data.sections[0]);
+    async function loadSections() {
+      try {
+        const data = await api.getFacultySections();
+        const sectionsList = data.sections || (Array.isArray(data) ? data : []);
+        setSections(sectionsList);
+        
+        if (sectionsList.length > 0) {
+          handleSelectSection(sectionsList[0]);
         }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadSections();
   }, []);
 
-  // 2. የተመረጠውን ክፍል ተማሪዎች ማምጣት
-  useEffect(() => {
-    if (selectedSection) {
-      api.getSectionRoster(selectedSection.id)
-        .then(data => {
-          setSelectedSection(data);
-          const initialGrades: Record<string, string> = {};
-          data.enrollments.forEach((e: any) => {
-            if (e.grade) initialGrades[e.id] = e.grade;
-          });
-          setGrades(initialGrades);
-        })
-        .catch(console.error);
+  const handleSelectSection = async (section: any) => {
+    setSelectedSection(section);
+    setIsRosterLoading(true);
+    try {
+      const data = await api.getSectionRoster(section.id);
+      
+      // 👇 ከ Backend የሚመጣው ሙሉ ሴክሽን ነው፣ ስለዚህ የ enrollments ዝርዝር እንወስዳለን
+      if (data && data.enrollments) {
+        setRoster(data.enrollments);
+      } else if (Array.isArray(data)) {
+        setRoster(data);
+      } else {
+        setRoster([]);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsRosterLoading(false);
     }
-  }, [selectedSection?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
-  // 3. ውጤት ማስቀመጥ
-  const handleGradeSubmit = async (enrollmentId: string) => {
-    const grade = grades[enrollmentId];
-    if (!grade) return;
+  const handleGradeChange = async (enrollmentId: string, newGrade: string) => {
     setSavingId(enrollmentId);
     try {
-      await api.submitGrade(enrollmentId, grade);
-      // ዳታውን በአዲስ ማምጣት
-      const data = await api.getSectionRoster(selectedSection.id);
-      setSelectedSection(data);
-    } catch (err) {
-      alert('Failed to save grade');
+      await api.submitGrade(enrollmentId, newGrade);
+      setRoster(prev => prev.map(s => 
+        s.id === enrollmentId ? { ...s, grade: newGrade } : s
+      ));
+    } catch (error: any) {
+      alert(error.message || 'Failed to save grade');
     } finally {
       setSavingId(null);
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-violet-600" /></div>;
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Gradebook</h1>
-        <p className="text-slate-500 mt-1">Manage student grades for your assigned courses.</p>
+    <div className="space-y-6 max-w-7xl mx-auto p-4">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Gradebook</h1>
+          <p className="text-sm text-slate-500 mt-1">Enter and update student grades.</p>
+        </div>
+        
+        {sections.length > 0 && (
+          <div className="w-72">
+            <label className="block text-xs font-medium text-slate-500 mb-1">Select Class Section</label>
+            <select 
+              className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-violet-500 focus:border-violet-500"
+              onChange={(e) => {
+                const sec = sections.find(s => s.id === e.target.value);
+                if (sec) handleSelectSection(sec);
+              }}
+              value={selectedSection?.id || ''}
+            >
+              {sections.map(sec => (
+                <option key={sec.id} value={sec.id}>
+                  {sec.course?.code} - Sec {sec.sectionCode} ({sec.term})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-        {/* የኮርሶች ዝርዝር (Sidebar) */}
-        <Card className="border-slate-200 shadow-sm h-fit">
-          <CardHeader className="border-b border-slate-100 pb-3">
-            <CardTitle className="text-base">My Courses</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2">
-            {sections.map(sec => (
-              <button
-                key={sec.id}
-                onClick={() => setSelectedSection(sec)}
-                className={`w-full text-left p-3 rounded-lg mb-1 transition-colors flex items-center justify-between ${
-                  selectedSection?.id === sec.id
-                    ? 'bg-violet-50 text-violet-700 border border-violet-200'
-                    : 'hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <div>
-                  <p className="font-bold text-sm">{sec.course.code}</p>
-                  <p className="text-xs opacity-80">{sec.course.title}</p>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            ))}
-            {sections.length === 0 && <p className="p-3 text-sm text-slate-500">No courses assigned.</p>}
-          </CardContent>
-        </Card>
-
-        {/* የተማሪዎች ውጤት ሰንጠረዥ */}
-        <Card className="border-slate-200 shadow-sm">
-          {selectedSection ? (
-            <>
-              <CardHeader className="border-b border-slate-100 pb-4">
-                <CardTitle className="text-lg">{selectedSection.course.code}: {selectedSection.course.title}</CardTitle>
-                <p className="text-sm text-slate-500">Section {selectedSection.sectionCode} · {selectedSection.enrollments?.length || 0} Students</p>
-              </CardHeader>
-              <CardContent className="p-0">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                    <tr>
-                      <th className="px-6 py-3 font-medium">Student</th>
-                      <th className="px-6 py-3 font-medium">Student ID</th>
-                      <th className="px-6 py-3 font-medium">Current Grade</th>
-                      <th className="px-6 py-3 font-medium text-right">Update</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {selectedSection.enrollments?.map((e: any) => (
-                      <tr key={e.id} className="hover:bg-slate-50/50">
-                        <td className="px-6 py-4 font-medium text-slate-900">
-                          {e.student.user.profile?.firstName} {e.student.user.profile?.lastName}
-                        </td>
-                        <td className="px-6 py-4 font-mono text-slate-600">{e.student.studentNumber}</td>
-                        <td className="px-6 py-4">
-                          {e.grade ? (
-                            <Badge variant={e.grade === 'F' ? 'destructive' : 'success'}>{e.grade}</Badge>
-                          ) : (
-                            <Badge variant="secondary">Not Graded</Badge>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 flex justify-end gap-2">
-                          <select
-                            className="h-9 w-24 rounded-md border border-input bg-white px-2 text-sm focus:ring-2 focus:ring-violet-500"
-                            value={grades[e.id] || ''}
-                            onChange={(ev) => setGrades({ ...grades, [e.id]: ev.target.value })}
-                          >
-                            <option value="" disabled>Select</option>
-                            {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                          <Button
-                            size="sm"
-                            onClick={() => handleGradeSubmit(e.id)}
-                            disabled={savingId === e.id || !grades[e.id] || grades[e.id] === e.grade}
-                            className="bg-violet-600 hover:bg-violet-700 text-white w-10 p-0"
-                          >
-                            {savingId === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                    {(!selectedSection.enrollments || selectedSection.enrollments.length === 0) && (
-                      <tr><td colSpan={4} className="text-center py-8 text-slate-500">No students enrolled in this section.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </CardContent>
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full p-12 text-slate-500">
-              <p>Select a course from the left to view the gradebook.</p>
+      {sections.length === 0 ? (
+        <div className="p-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200">
+          You are not assigned to any sections yet.
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-200 bg-slate-50">
+            <h2 className="font-semibold text-slate-800">
+              {selectedSection?.course?.code} - {selectedSection?.course?.title}
+            </h2>
+          </div>
+          
+          {isRosterLoading ? (
+            <div className="flex justify-center p-12">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white border-b border-slate-200">
+                  <th className="p-4 text-sm font-medium text-slate-600">Student Name</th>
+                  <th className="p-4 text-sm font-medium text-slate-600">ID Number</th>
+                  <th className="p-4 text-sm font-medium text-slate-600">Email</th>
+                  <th className="p-4 text-sm font-medium text-slate-600">Current Grade</th>
+                  <th className="p-4 text-sm font-medium text-slate-600">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((enrollment: any) => (
+                  <tr key={enrollment.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="p-4 text-sm font-medium text-slate-900">
+                      {enrollment.student?.user?.profile?.firstName || 'N/A'} {enrollment.student?.user?.profile?.lastName || ''}
+                    </td>
+                    <td className="p-4 text-sm font-mono text-slate-600">{enrollment.student?.studentNumber}</td>
+                    <td className="p-4 text-sm text-slate-600">{enrollment.student?.user?.email}</td>
+                    <td className="p-4 text-sm">
+                      <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${
+                        enrollment.grade ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {enrollment.grade || 'Not Graded'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <select 
+                          value={enrollment.grade || ''}
+                          onChange={(evt) => handleGradeChange(enrollment.id, evt.target.value)}
+                          disabled={savingId === enrollment.id}
+                          className="border border-slate-300 rounded-md p-1.5 text-sm focus:ring-violet-500 focus:border-violet-500"
+                        >
+                          <option value="" disabled>Select Grade</option>
+                          <option value="A">A</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B">B</option>
+                          <option value="B-">B-</option>
+                          <option value="C+">C+</option>
+                          <option value="C">C</option>
+                          <option value="D">D</option>
+                          <option value="F">F</option>
+                        </select>
+                        {savingId === enrollment.id && (
+                          <span className="text-xs text-slate-400">Saving...</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {roster.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-500">
+                      No students are currently enrolled in this section.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           )}
-        </Card>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
