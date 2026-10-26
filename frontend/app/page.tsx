@@ -1,11 +1,19 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function HomePage() {
+  // 👇 የዓመቱን ቁጥር ለመያዝ State
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+
+  // 👇 ገጹ ከተጫነ በኋላ ብቻ ዓመቱን ማስላት
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       
@@ -147,7 +155,8 @@ export default function HomePage() {
             <p className="font-semibold">Injibara University</p>
           </div>
           <p className="text-sm">
-            © {new Date().getFullYear()} SRES System. All rights reserved.
+            {/* 👇 ዓመቱ እስኪሰላ ድረስ የአሁኑን ዓመት ያሳያል */}
+            © {currentYear || 2026} SRES System. All rights reserved.
           </p>
           <div className="flex gap-4 text-sm">
             <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
