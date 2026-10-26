@@ -9,6 +9,15 @@ export class FacultyService {
     private readonly audit: AuditService,
   ) {}
 
+  // 👇 አዲስ የተጨመረ - አድሚን ሁሉንም አስተማሪዎች ለማየት/ለመምረጥ
+  async getAllFaculty() {
+    return this.prisma.faculty.findMany({
+      include: {
+        user: { include: { profile: true } },
+      },
+    });
+  }
+
   async getMySections(userId: string) {
     const faculty = await this.prisma.faculty.findUnique({
       where: { userId },
