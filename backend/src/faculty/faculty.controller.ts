@@ -12,6 +12,13 @@ import { FacultyService } from './faculty.service';
 export class FacultyController {
   constructor(private readonly faculty: FacultyService) {}
 
+  // 👇 አዲስ የተጨመረ - አድሚኑ አስተማሪዎችን ለመምረጥ የሚያገለግል
+  @Get('list')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getAllFaculty() {
+    return this.faculty.getAllFaculty();
+  }
+
   @Get('sections')
   @Roles(Role.FACULTY, Role.ADMIN)
   getMySections(@CurrentUser() user: AuthenticatedUser) {
