@@ -7,8 +7,6 @@ import {
 import { Prisma, Term } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import type { CreateSectionDto } from './dto/create-section.dto';
-import type { UpdateSectionDto } from './dto/update-section.dto';
 
 export interface ListSectionsQuery {
   term?: Term;
@@ -31,8 +29,6 @@ export class SectionsService {
     if (query.courseId) where.courseId = query.courseId;
     
     if (query.search) {
-      // MySQL does not support 'mode: insensitive', so we remove it.
-      // utf8mb4_unicode_ci collation makes queries case-insensitive by default.
       where.OR = [
         { sectionCode: { contains: query.search } },
         { course: { code: { contains: query.search } } },
@@ -49,6 +45,7 @@ export class SectionsService {
       orderBy: [{ term: 'asc' }, { academicYear: 'desc' }, { sectionCode: 'asc' }],
     });
 
+    // 👇 የፊት ገጹ የሚጠብቀውን instructorName እዚህ እንመልሳለን
     return sections.map((s) => ({
       id: s.id,
       sectionCode: s.sectionCode,
@@ -84,7 +81,7 @@ export class SectionsService {
     return section;
   }
 
-  async create(actorId: string, dto: CreateSectionDto) {
+  async create(actorId: string, dto: any) {
     await this.ensureCourse(dto.courseId);
     if (dto.instructorId) await this.ensureInstructor(dto.instructorId);
 
@@ -105,7 +102,7 @@ export class SectionsService {
     const section = await this.prisma.section.create({
       data: {
         courseId: dto.courseId,
-        instructorId: dto.instructorId,
+        instructorId: dto.instructorId || null, // 👈 አስተማሪው እዚህ ይቀመጣል
         term: dto.term,
         academicYear: dto.academicYear,
         sectionCode: dto.sectionCode,
@@ -123,7 +120,7 @@ export class SectionsService {
     return section;
   }
 
-  async update(actorId: string, id: string, dto: UpdateSectionDto) {
+  async update(actorId: string, id: string, dto: any) {
     await this.ensureSection(id);
     if (dto.capacity !== undefined) {
       const current = await this.prisma.section.findUniqueOrThrow({
