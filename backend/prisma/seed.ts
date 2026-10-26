@@ -8,7 +8,7 @@ async function main(): Promise<void> {
   const hash = await bcrypt.hash('Password123', rounds);
 
   // ---- Admin ----
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'admin@sres.local' },
     update: {},
     create: {
@@ -18,20 +18,6 @@ async function main(): Promise<void> {
       accountStatus: AccountStatus.ACTIVE,
       emailVerified: true,
       profile: { create: { firstName: 'System', lastName: 'Admin' } },
-    },
-  });
-
-  // ---- Registrar ----
-  await prisma.user.upsert({
-    where: { email: 'registrar@sres.local' },
-    update: {},
-    create: {
-      email: 'registrar@sres.local',
-      passwordHash: hash,
-      role: Role.REGISTRAR,
-      accountStatus: AccountStatus.ACTIVE,
-      emailVerified: true,
-      profile: { create: { firstName: 'Regina', lastName: 'Registrar' } },
     },
   });
 
@@ -189,7 +175,7 @@ async function main(): Promise<void> {
     },
   });
 
-  console.log(`Seeded admin ${admin.email}`);
+  console.log('Seed completed!');
 }
 
 main()
