@@ -30,11 +30,26 @@ export default function LoginPage() {
       const storedUser = localStorage.getItem('sres_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
+        
+        // 👇 ሁሉንም ሮሎች በትክክል መለየት
         switch (parsed.role) {
-          case 'ADMIN': router.push('/admin'); break;
-          case 'BURSAR': router.push('/bursar'); break;
-          case 'FACULTY': router.push('/faculty'); break;
-          default: router.push('/student'); break;
+          case 'SUPER_ADMIN': 
+          case 'ADMIN': 
+            router.push('/admin'); 
+            break;
+          case 'REGISTRAR':
+            router.push('/registrar');
+            break;
+          case 'BURSAR': 
+            router.push('/bursar'); 
+            break;
+          case 'FACULTY': 
+            router.push('/faculty'); 
+            break;
+          case 'STUDENT': 
+          default: 
+            router.push('/student'); 
+            break;
         }
       } else {
         router.push('/');
@@ -52,7 +67,6 @@ export default function LoginPage() {
       {/* የግራ በኩል ዲዛይን (ምስል + ሎጎ) */}
       <div className="hidden lg:flex w-[45%] relative flex-col justify-between p-12 overflow-hidden">
         
-        {/* ✅ ምስሉ (Blur የለም፣ ግልጽ ሆኖ ይታያል) */}
         <div className="absolute inset-0 z-0">
           <Image 
             src="/assets/images/inu-campus.jpg" 
@@ -61,11 +75,9 @@ export default function LoginPage() {
             className="object-cover"
             priority
           />
-          {/* ✅ ቀላል የጨለማ ንብርብር (30% ብቻ) - ጽሑፎቹ እንዲነበቡ */}
           <div className="absolute inset-0 bg-black/30"></div>
         </div>
 
-        {/* የላይኛው ክፍል (ሎጎ + ወደ መነሻ ሊንክ) */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3 text-white">
             <div className="h-10 w-10 rounded-md overflow-hidden bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
@@ -85,7 +97,6 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* የመሃል ክፍል (ጽሑፍ በምስሉ ላይ) */}
         <div className="relative z-10 max-w-md my-auto">
           <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">Your next chapter starts here.</h2>
           <p className="text-slate-100 text-base leading-relaxed drop-shadow-md">
@@ -93,7 +104,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* የታችኛው ክፍል */}
         <div className="relative z-10 text-sm text-slate-200 drop-shadow-md">
           Registration & Enrollment System
         </div>
