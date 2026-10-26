@@ -18,7 +18,7 @@ export class AnnouncementsController {
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.FACULTY)
+  @Roles(Role.ADMIN, Role.FACULTY) // 👈 REGISTRAR ተወግዷል
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body('title') title: string,
