@@ -12,11 +12,11 @@ datasource db {
 // =========================================================
 
 enum Role {
-  SUPER_ADMIN  // ✅ አዲስ የተጨመረ
+  SUPER_ADMIN
   ADMIN
-  REGISTRAR
   FACULTY
   BURSAR
+  REGISTRAR
   STUDENT
 }
 
