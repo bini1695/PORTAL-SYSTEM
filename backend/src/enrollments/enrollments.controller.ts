@@ -36,13 +36,13 @@ export class EnrollmentsController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN) // 👈 REGISTRAR ተወግዷል
   listAll() {
     return this.enrollments.listAll();
   }
 
   @Post('override')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN) // 👈 REGISTRAR ተወግዷል
   override(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: OverrideEnrollmentDto,
