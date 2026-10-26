@@ -11,14 +11,7 @@ import { registerSchema, type RegisterInput } from '@/lib/validations/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GraduationCap, CheckCircle2, User, Shield, Briefcase, ArrowLeft } from 'lucide-react';
-
-const roles = [
-  { id: 'STUDENT', title: 'Student', desc: 'Enroll and manage your studies', icon: GraduationCap },
-  { id: 'FACULTY', title: 'Faculty', desc: 'Teach and support students', icon: User },
-  { id: 'ADMIN', title: 'Admin', desc: 'Manage academic operations', icon: Shield },
-  { id: 'BURSAR', title: 'Bursar', desc: 'Manage fees and payments', icon: Briefcase },
-];
+import { ArrowLeft } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -48,7 +41,6 @@ export default function RegisterPage() {
       {/* ✅ የግራ በኩል ዲዛይን (ምስል + ሎጎ + ጽሑፍ) */}
       <div className="hidden lg:flex w-[45%] relative flex-col justify-between p-12 overflow-hidden">
         
-        {/* የጀርባ ምስል (ሙሉ ቦታውን ይሸፍናል) */}
         <div className="absolute inset-0 z-0">
           <Image 
             src="/assets/images/inu-campus.jpg" 
@@ -57,11 +49,9 @@ export default function RegisterPage() {
             className="object-cover"
             priority
           />
-          {/* ቀላል የጨለማ ንብርብር (30% ብቻ) - ጽሑፎቹ እንዲነበቡ */}
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
 
-        {/* የላይኛው ክፍል (ሎጎ + ወደ መነሻ ሊንክ) */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3 text-white">
             <div className="h-10 w-10 rounded-md overflow-hidden bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
@@ -81,7 +71,6 @@ export default function RegisterPage() {
           </Link>
         </div>
 
-        {/* የመሃል ክፍል (ጽሑፍ በምስሉ ላይ) */}
         <div className="relative z-10 max-w-md my-auto">
           <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">Your journey begins here.</h2>
           <p className="text-slate-100 text-base leading-relaxed drop-shadow-md">
@@ -89,7 +78,6 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* የታችኛው ክፍል */}
         <div className="relative z-10 text-sm text-slate-200 drop-shadow-md">
           Registration & Enrollment System
         </div>
@@ -98,7 +86,6 @@ export default function RegisterPage() {
       {/* የቀኝ በኩል ፎርም */}
       <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-16 bg-slate-50 relative overflow-y-auto">
         
-        {/* ለስልክ እይታ ወደ መነሻ መመለሻ */}
         <div className="absolute top-8 right-8 lg:hidden">
           <Link href="/" className="text-slate-500 hover:text-[#0f2340] transition-colors flex items-center gap-1 text-sm font-medium">
             <ArrowLeft className="h-4 w-4" /> Back to Home
@@ -113,35 +100,21 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             
-            {/* ✅ የሮል ምርጫ ክፍል */}
-            <div>
-              <Label className="text-sm font-semibold text-slate-700 mb-3 block">I am registering as a...</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {roles.map((role) => {
-                  const Icon = role.icon;
-                  const isSelected = selectedRole === role.id;
-                  return (
-                    <div
-                      key={role.id}
-                      onClick={() => setSelectedRole(role.id)}
-                      className={`relative cursor-pointer p-3 rounded-xl border-2 transition-all flex flex-col gap-1 ${
-                        isSelected
-                          ? 'border-[#0f2340] bg-[#0f2340]/5'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <Icon className={`h-5 w-5 ${isSelected ? 'text-[#0f2340]' : 'text-slate-400'}`} />
-                      <p className={`font-semibold text-sm ${isSelected ? 'text-[#0f2340]' : 'text-slate-700'}`}>{role.title}</p>
-                      <p className="text-[10px] text-slate-500 leading-tight">{role.desc}</p>
-                      {isSelected && (
-                        <div className="absolute top-3 right-3 h-4 w-4 bg-[#0f2340] rounded-full flex items-center justify-center">
-                          <CheckCircle2 className="h-3 w-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            {/* ✅ የሮል ምርጫ ክፍል (Dropdown - መግለጫ ሳይኖር) */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-slate-700">I am registering as a...</Label>
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="w-full h-11 bg-white border border-slate-300 rounded-md px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0f2340] focus:border-transparent transition-all"
+              >
+                <option value="STUDENT">Student</option>
+                <option value="FACULTY">Faculty</option>
+                <option value="ADMIN">Admin</option>
+                <option value="REGISTRAR">Registrar</option>
+                <option value="BURSAR">Bursar</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
