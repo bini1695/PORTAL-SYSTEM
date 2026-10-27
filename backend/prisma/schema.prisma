@@ -88,6 +88,20 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum AssessmentType {
+  QUIZ
+  ASSIGNMENT
+  MID_EXAM
+  FINAL_EXAM
+  PROJECT
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // =========================================================
 // TABLES
 // =========================================================
@@ -107,6 +121,7 @@ model User {
   faculty       Faculty?
   auditLogs     AuditLog[]
   announcements Announcement[]
+  notifications Notification[] // 👈 አዲስ የተጨመረ
 
   @@index([email])
   @@index([role])
@@ -232,6 +247,7 @@ model Section {
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   instructor  Faculty?     @relation(fields: [instructorId], references: [id], onDelete: SetNull)
   enrollments Enrollment[]
+  assessments Assessment[]
 
   @@unique([courseId, term, academicYear, sectionCode])
   @@index([courseId])
@@ -240,17 +256,21 @@ model Section {
 }
 
 model Enrollment {
-  id         String           @id @default(uuid()) @db.VarChar(36)
-  studentId  String           @db.VarChar(36)
-  sectionId  String           @db.VarChar(36)
-  status     EnrollmentStatus @default(ENROLLED)
-  grade      String?          @db.VarChar(2)
-  enrolledAt DateTime         @default(now())
-  droppedAt  DateTime?
-  updatedAt  DateTime         @updatedAt
+  id             String           @id @default(uuid()) @db.VarChar(36)
+  studentId      String           @db.VarChar(36)
+  sectionId      String           @db.VarChar(36)
+  status         EnrollmentStatus @default(ENROLLED)
+  grade          String?          @db.VarChar(2)
+  enrolledAt     DateTime         @default(now())
+  droppedAt      DateTime?
+  updatedAt      DateTime         @updatedAt
+  gradeSubmitted Boolean          @default(false)
 
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  student        Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section        Section              @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  attendances    Attendance[]
+  marks          StudentMark[]
+  changeRequests GradeChangeRequest[]
 
   @@unique([studentId, sectionId])
   @@index([studentId])
@@ -343,4 +363,82 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@index([key])
+}
+
+model Attendance {
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  enrollmentId String   @db.VarChar(36)
+  date         DateTime @db.Date
+  status       String   @db.VarChar(20)
+  createdAt    DateTime @default(now())
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, date])
+  @@index([enrollmentId])
+}
+
+model Assessment {
+  id         String         @id @default(uuid()) @db.VarChar(36)
+  sectionId  String         @db.VarChar(36)
+  name       String         @db.VarChar(100)
+  type       AssessmentType
+  weight     Float
+  totalMarks Float
+  createdAt  DateTime       @default(now())
+
+  section      Section       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  studentMarks StudentMark[]
+
+  @@index([sectionId])
+}
+
+model StudentMark {
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  assessmentId String   @db.VarChar(36)
+  enrollmentId String   @db.VarChar(36)
+  score        Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, enrollmentId])
+  @@index([assessmentId])
+  @@index([enrollmentId])
+}
+
+model GradeChangeRequest {
+  id           String              @id @default(uuid()) @db.VarChar(36)
+  enrollmentId String              @db.VarChar(36)
+  facultyId    String              @db.VarChar(36)
+  oldGrade     String              @db.VarChar(10)
+  newGrade     String              @db.VarChar(10)
+  reason       String              @db.Text
+  status       ChangeRequestStatus @default(PENDING)
+  reviewedBy   String?             @db.VarChar(36)
+  reviewedAt   DateTime?
+  createdAt    DateTime            @default(now())
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+  @@index([status])
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  userId    String   @db.VarChar(36)
+  title     String   @db.VarChar(150)
+  message   String   @db.Text
+  type      String   @db.VarChar(50) // 'INFO', 'SUCCESS', 'WARNING', 'ALERT'
+  isRead    Boolean  @default(false)
+  link      String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
 }
