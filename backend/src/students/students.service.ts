@@ -1,13 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { AccountStatus, DocumentType, Role } from '@prisma/client';
+import { AccountStatus, DocumentType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class StudentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async listAll() {
@@ -39,15 +41,12 @@ export class StudentsService {
     if (!student) throw new NotFoundException('Student not found');
 
     try {
-      // 👇 የተሻሻለ የ Transaction አጻጻፍ (በ MySQL ላይ በተለይ ጥሩ ይሰራል)
       await this.prisma.$transaction(async (tx) => {
-        // 1. Update Student
         await tx.student.update({ 
           where: { id: studentId }, 
           data: { status } 
         });
         
-        // 2. Update User Account
         await tx.user.update({ 
           where: { id: student.userId }, 
           data: { accountStatus: status } 
@@ -58,7 +57,19 @@ export class StudentsService {
       throw new BadRequestException('Could not update student status in database.');
     }
 
-    // Audit Log (በተለየ የሚመዘገብ)
+    try {
+      await this.notifications.create(student.userId, {
+        title: status === 'ACTIVE' ? 'Account Approved' : 'Account Update',
+        message: status === 'ACTIVE' 
+          ? 'Your account has been approved. You can now login and register for courses.'
+          : `Your account status has been changed to ${status}.`,
+        type: status === 'ACTIVE' ? 'SUCCESS' : 'WARNING',
+        link: '/login',
+      });
+    } catch (notifError) {
+      console.warn('Notification failed:', notifError);
+    }
+
     try {
       await this.audit.record({
         userId: actorId,
@@ -85,46 +96,98 @@ export class StudentsService {
     return student;
   }
 
+  // 👇 የተሻሻለው የውጤት ፈንክሽን - ከ StudentMark ውጤቱን ያሰላል
   async getMyGrades(userId: string) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
-      select: { id: true, studentNumber: true, program: true, degreeLevel: true }
+      include: { user: { include: { profile: true } } }
     });
     if (!student) throw new NotFoundException('Student profile not found');
 
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { 
-        studentId: student.id,
-        OR: [
-          { status: 'COMPLETED' },
-          { grade: { not: null } }
-        ]
-      },
+      where: { studentId: student.id },
       include: {
         section: {
           include: {
             course: true,
+            assessments: true, // 👈 የውጤት ክፍፍሎችን አምጣ
             instructor: { include: { user: { include: { profile: true } } } }
           }
-        }
+        },
+        marks: true, // 👈 የተማሪውን ነጥቦች አምጣ
       },
       orderBy: { enrolledAt: 'desc' }
     });
 
-    return {
-      student,
-      enrollments: enrollments.map(e => ({
+    const gradePoints: Record<string, number> = {
+      'A': 4.0, 'A-': 3.75, 'B+': 3.5, 'B': 3.0, 'B-': 2.75,
+      'C+': 2.5, 'C': 2.0, 'D': 1.0, 'F': 0.0
+    };
+
+    let totalCredits = 0;
+    let totalPoints = 0;
+
+    const courses = enrollments.map(e => {
+      const credit = e.section.course.creditUnits;
+      let totalPercentage = 0;
+
+      // 👇 ከ StudentMark ውጤቱን አስላ
+      e.section.assessments.forEach(a => {
+        const mark = e.marks.find(m => m.assessmentId === a.id);
+        if (mark) {
+          totalPercentage += (mark.score / a.totalMarks) * a.weight;
+        }
+      });
+
+      // 👇 ውጤቱን ወስን (ከ enrollment.grade ወይም ከተሰላው በመቶኛ)
+      let finalGrade = e.grade;
+      if (!finalGrade && totalPercentage > 0) {
+        if (totalPercentage >= 90) finalGrade = 'A';
+        else if (totalPercentage >= 85) finalGrade = 'A-';
+        else if (totalPercentage >= 80) finalGrade = 'B+';
+        else if (totalPercentage >= 75) finalGrade = 'B';
+        else if (totalPercentage >= 70) finalGrade = 'B-';
+        else if (totalPercentage >= 65) finalGrade = 'C+';
+        else if (totalPercentage >= 60) finalGrade = 'C';
+        else if (totalPercentage >= 50) finalGrade = 'D';
+        else finalGrade = 'F';
+      }
+
+      const point = finalGrade ? (gradePoints[finalGrade] || 0) : 0;
+      
+      if (finalGrade) {
+        totalCredits += credit;
+        totalPoints += (point * credit);
+      }
+
+      return {
         id: e.id,
-        grade: e.grade,
+        grade: finalGrade || 'N/A',
         status: e.status,
         term: e.section.term,
         academicYear: e.section.academicYear,
         course: {
           code: e.section.course.code,
           title: e.section.course.title,
-          creditUnits: e.section.course.creditUnits
-        }
-      }))
+          creditUnits: credit,
+        },
+        instructor: e.section.instructor ? 
+          `${e.section.instructor.user.profile?.firstName} ${e.section.instructor.user.profile?.lastName}` : 'TBA'
+      };
+    });
+
+    const gpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
+
+    return {
+      student: {
+        name: `${student.user.profile?.firstName} ${student.user.profile?.lastName}`,
+        studentNumber: student.studentNumber,
+        program: student.program,
+        degreeLevel: student.degreeLevel,
+      },
+      gpa,
+      totalCredits,
+      courses,
     };
   }
 
