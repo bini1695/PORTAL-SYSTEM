@@ -14,20 +14,27 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 export class BillingController {
   constructor(private readonly billing: BillingService) {}
 
+  // 👇 አዲስ የተጨመረ - ተማሪው የራሱን ደረሰኞች እንዲያይ
+  @Get('invoices/me')
+  @Roles(Role.STUDENT)
+  getMyInvoices(@CurrentUser() user: AuthenticatedUser) {
+    return this.billing.getMyInvoices(user.sub);
+  }
+
   @Get('stats')
-  @Roles(Role.BURSAR, Role.ADMIN)
+  @Roles(Role.BURSAR, Role.ADMIN, Role.SUPER_ADMIN)
   getDashboardStats() {
     return this.billing.getDashboardStats();
   }
 
   @Get('invoices')
-  @Roles(Role.BURSAR, Role.ADMIN)
+  @Roles(Role.BURSAR, Role.ADMIN, Role.SUPER_ADMIN)
   getAllInvoices() {
     return this.billing.getAllInvoices();
   }
 
   @Post('invoices')
-  @Roles(Role.BURSAR, Role.ADMIN)
+  @Roles(Role.BURSAR, Role.ADMIN, Role.SUPER_ADMIN)
   createInvoice(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateInvoiceDto,
@@ -36,7 +43,7 @@ export class BillingController {
   }
 
   @Post('payments')
-  @Roles(Role.BURSAR, Role.ADMIN)
+  @Roles(Role.BURSAR, Role.ADMIN, Role.SUPER_ADMIN)
   recordPayment(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePaymentDto,
@@ -44,9 +51,8 @@ export class BillingController {
     return this.billing.recordPayment(user.sub, dto);
   }
 
-  // ✅ የተከፈሉ ክፍያዎችን ለማምጣት
   @Get('payments')
-  @Roles(Role.BURSAR, Role.ADMIN)
+  @Roles(Role.BURSAR, Role.ADMIN, Role.SUPER_ADMIN)
   getAllPayments() {
     return this.billing.getAllPayments();
   }
