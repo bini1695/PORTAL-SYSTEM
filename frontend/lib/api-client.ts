@@ -124,13 +124,58 @@ export const api = {
   // Faculty
   // ==========================================
   getFacultyList: () => request<any[]>('/faculty/list'),
+  getFacultyOverview: () => request<any>('/faculty/overview'),
   getFacultySections: () => request<any>('/faculty/sections'),
   getSectionRoster: (sectionId: string) => request<any>(`/faculty/sections/${sectionId}/roster`),
+  
   submitGrade: (enrollmentId: string, grade: string) =>
     request<any>('/faculty/grades', {
-      method: 'POST',
+      method: 'PATCH',
       body: JSON.stringify({ enrollmentId, grade }),
     }),
+
+  // ==========================================
+  // Gradebook (Faculty)
+  // ==========================================
+  getSectionGradebook: (sectionId: string) => 
+    request<any>(`/faculty/gradebook/${sectionId}`),
+    
+  createAssessment: (sectionId: string, data: { name: string, type: string, weight: number, totalMarks: number }) => 
+    request<any>(`/faculty/gradebook/${sectionId}/assessments`, { 
+      method: 'POST', 
+      body: JSON.stringify(data) 
+    }),
+    
+  saveMarks: (sectionId: string, assessmentId: string, marks: { enrollmentId: string, score: number }[]) => 
+    request<any>(`/faculty/gradebook/${sectionId}/marks`, { 
+      method: 'POST', 
+      body: JSON.stringify({ assessmentId, marks }) 
+    }),
+    
+  submitFinalGrades: (sectionId: string) => 
+    request<any>(`/faculty/gradebook/${sectionId}/submit`, { method: 'PATCH' }),
+
+  // ==========================================
+  // Grade Change Requests (Faculty & Registrar)
+  // ==========================================
+  requestGradeChange: (data: { enrollmentId: string, newGrade: string, reason: string }) => 
+    request<any>('/grade-changes', { method: 'POST', body: JSON.stringify(data) }),
+    
+  getPendingGradeChanges: () => request<any[]>('/grade-changes/pending'),
+  
+  reviewGradeChange: (id: string, status: 'APPROVED' | 'REJECTED') => 
+    request<any>(`/grade-changes/${id}/review`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+
+  // ==========================================
+  // Notifications
+  // ==========================================
+  getNotifications: () => request<any[]>('/notifications'),
+  
+  markNotificationAsRead: (id: string) => 
+    request<any>(`/notifications/${id}/read`, { method: 'PATCH' }),
+    
+  markAllNotificationsAsRead: () => 
+    request<any>('/notifications/read-all', { method: 'PATCH' }),
 
   // ==========================================
   // Announcements
