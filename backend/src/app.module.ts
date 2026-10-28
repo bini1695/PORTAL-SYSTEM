@@ -14,7 +14,8 @@ import { HoldsModule } from './holds/holds.module';
 import { AuditModule } from './audit/audit.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { FacultyModule } from './faculty/faculty.module';
-import { SettingsModule } from './settings/settings.module'; // 👈 አዲስ የተጨመረ
+import { SettingsModule } from './settings/settings.module';
+import { NotificationsModule } from './notifications/notifications.module'; // 👈 አዲስ የተጨመረ
 
 @Module({
   imports: [
@@ -36,7 +37,8 @@ import { SettingsModule } from './settings/settings.module'; // 👈 አዲስ �
     HoldsModule,
     AnnouncementsModule,
     FacultyModule,
-    SettingsModule, // 👈 እዚህ ጋር ተካቷል
+    SettingsModule,
+    NotificationsModule, // 👈 እዚህ ጋር ተካቷል
   ],
 })
 export class AppModule {}
