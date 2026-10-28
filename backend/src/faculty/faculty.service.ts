@@ -9,13 +9,66 @@ export class FacultyService {
     private readonly audit: AuditService,
   ) {}
 
-  // 👇 አዲስ የተጨመረ - አድሚን ሁሉንም አስተማሪዎች ለማየት/ለመምረጥ
   async getAllFaculty() {
     return this.prisma.faculty.findMany({
       include: {
         user: { include: { profile: true } },
       },
     });
+  }
+
+  // 👇 ለፊት ገጹ (Overview) የሚያገለግል አዲስ ፈንክሽን
+  async getOverview(userId: string) {
+    const faculty = await this.prisma.faculty.findUnique({
+      where: { userId },
+      select: { id: true, department: true, user: { include: { profile: true } } },
+    });
+    if (!faculty) throw new NotFoundException('Faculty profile not found');
+
+    // ሴክሽኖችን እና በውስጣቸው ያሉ ተማሪዎችን ማምጣት
+    const sections = await this.prisma.section.findMany({
+      where: { instructorId: faculty.id },
+      include: {
+        course: { select: { code: true, title: true } },
+        _count: { select: { enrollments: true } },
+      },
+    });
+
+    const totalStudents = sections.reduce((sum, sec) => sum + sec._count.enrollments, 0);
+
+    // የቅርብ ጊዜ ምዝገባዎችን ማምጣት
+    const recentEnrollments = await this.prisma.enrollment.findMany({
+      where: { section: { instructorId: faculty.id } },
+      take: 5,
+      orderBy: { enrolledAt: 'desc' },
+      include: {
+        student: { include: { user: { include: { profile: true } } } },
+        section: { include: { course: true } },
+      },
+    });
+
+    const recentActivity = recentEnrollments.map((e) => ({
+      id: e.id,
+      studentName: `${e.student.user.profile?.firstName || ''} ${e.student.user.profile?.lastName || ''}`.trim() || 'Unknown Student',
+      course: e.section.course.code,
+      date: e.enrolledAt,
+    }));
+
+    return {
+      facultyName: `${faculty.user.profile?.firstName || ''} ${faculty.user.profile?.lastName || ''}`.trim() || 'Faculty Member',
+      department: faculty.department,
+      totalSections: sections.length,
+      totalStudents,
+      sections: sections.map((s) => ({
+        id: s.id,
+        code: s.course.code,
+        title: s.course.title,
+        sectionCode: s.sectionCode,
+        students: s._count.enrollments,
+        room: s.room,
+      })),
+      recentActivity,
+    };
   }
 
   async getMySections(userId: string) {
