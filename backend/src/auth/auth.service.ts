@@ -10,6 +10,7 @@ import { AccountStatus, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service'; // 👈 አዲስ የተጨመረ
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService, // 👈 አዲስ የተጨመረ
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -34,7 +36,6 @@ export class AuthService {
     const rounds = Number(this.config.get<string>('BCRYPT_ROUNDS') ?? 12);
     const passwordHash = await bcrypt.hash(dto.password, rounds);
 
-    // 👇 ሁሉም ሰው ሲመዘገብ PENDING ይሁን (ማጽደቅ ይፈልጋል)
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
@@ -63,6 +64,21 @@ export class AuthService {
           status: AccountStatus.PENDING, 
         },
       });
+
+      // 👇 ለ Admin እና Super Admin ማሳወቂያ መላክ
+      const admins = await this.prisma.user.findMany({
+        where: { role: { in: [Role.ADMIN, Role.SUPER_ADMIN] } },
+        select: { id: true },
+      });
+
+      for (const admin of admins) {
+        await this.notifications.create(admin.id, {
+          title: 'New Student Registration',
+          message: `A new student (${user.email}) has registered and is pending approval.`,
+          type: 'INFO',
+          link: '/admin/applications',
+        });
+      }
     }
 
     if (user.role === Role.FACULTY) {
@@ -101,7 +117,6 @@ export class AuthService {
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
-    // 👇 ሁሉም PENDING የሆኑ ሰዎች እንዳይገቡ ማገድ
     if (user.accountStatus === AccountStatus.PENDING) {
       throw new ForbiddenException('Your account is pending admin approval.');
     }
