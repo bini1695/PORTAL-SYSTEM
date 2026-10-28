@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service'; // 👈 አዲስ
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { InvoiceStatus } from '@prisma/client';
@@ -10,6 +11,7 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService, // 👈 አዲስ
   ) {}
 
   async getDashboardStats() {
@@ -27,9 +29,22 @@ export class BillingService {
     });
   }
 
+  // 👇 አዲስ የተጨመረ - ተማሪው የራሱን ደረሰኞች ለማየት
+  async getMyInvoices(userId: string) {
+    const student = await this.prisma.student.findUnique({ where: { userId } });
+    if (!student) throw new NotFoundException('Student not found');
+
+    return this.prisma.invoice.findMany({
+      where: { studentId: student.id },
+      include: { payments: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async createInvoice(actorId: string, dto: CreateInvoiceDto) {
     const count = await this.prisma.invoice.count();
     const number = `INV-${new Date().getFullYear()}-${(count + 1).toString().padStart(4, '0')}`;
+    
     const invoice = await this.prisma.invoice.create({
       data: {
         studentId: dto.studentId,
@@ -39,7 +54,17 @@ export class BillingService {
         description: dto.description,
         status: InvoiceStatus.ISSUED,
       },
+      include: { student: { include: { user: true } } },
     });
+
+    // 👇 ለተማሪው ማሳወቂያ መላክ
+    await this.notifications.create(invoice.student.userId, {
+      title: 'New Invoice Generated',
+      message: `Invoice ${invoice.number} for $${(invoice.amountCents / 100).toFixed(2)} has been generated. Due: ${new Date(invoice.dueDate).toLocaleDateString()}`,
+      type: 'INFO',
+      link: '/student/invoices',
+    });
+
     await this.audit.record({ userId: actorId, action: 'INVOICE_CREATED', entity: 'Invoice', entityId: invoice.id });
     return invoice;
   }
@@ -48,7 +73,7 @@ export class BillingService {
     return this.prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findUnique({
         where: { id: dto.invoiceId },
-        include: { payments: true },
+        include: { payments: true, student: { include: { user: true } } },
       });
       if (!invoice) throw new NotFoundException('Invoice not found');
       if (invoice.status === InvoiceStatus.PAID) throw new BadRequestException('Invoice already paid');
@@ -68,12 +93,20 @@ export class BillingService {
       const newStatus = totalPaid >= invoice.amountCents ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
 
       await tx.invoice.update({ where: { id: invoice.id }, data: { status: newStatus } });
+
+      // 👇 ለተማሪው ማሳወቂያ መላክ
+      await this.notifications.create(invoice.student.userId, {
+        title: 'Payment Received',
+        message: `Payment of $${(dto.amountCents / 100).toFixed(2)} received for invoice ${invoice.number}. ${newStatus === 'PAID' ? 'Invoice fully paid!' : ''}`,
+        type: 'SUCCESS',
+        link: '/student/invoices',
+      });
+
       await this.audit.record({ userId: actorId, action: 'PAYMENT_RECORDED', entity: 'Payment', entityId: payment.id, metadata: { amountCents: dto.amountCents, invoiceId: invoice.id } });
       return payment;
     });
   }
 
-  // ✅ የተከፈሉ ክፍያዎችን ማምጣት (ከ recordPayment ውጪ መሆን አለበት)
   async getAllPayments() {
     return this.prisma.payment.findMany({
       include: {
